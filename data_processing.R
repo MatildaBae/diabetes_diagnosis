@@ -189,3 +189,147 @@ survey_plot <- diab_summary %>%
         theme_classic() +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
 survey_plot
+
+col1 <- c("Diabetes_binary","DiffWalk", "HeartDiseaseorAttack", "HighBP", "HighChol", "PhysActivity", "BMI", "GenHlth", "MentHlth", "Age") 
+
+diab_1 <- diab_data %>%
+  select(col1)
+
+library(tidymodels)
+library(dplyr)
+library(caret)
+
+# Identify numeric and factor variables
+numeric_cols <- sapply(diab_1, is.numeric)
+factor_cols <- sapply(diab_1, is.factor)
+
+# Scale numeric variables
+data_scaled <- diab_1
+data_scaled[, numeric_cols] <- scale(diab_1[, numeric_cols])
+
+# Combine scaled numeric variables and factor variables
+diab_2 <- cbind(data_scaled[, numeric_cols], diab_1[, factor_cols])
+
+# Split data into 75% for training and 25% for testing
+set.seed(4321)
+diab_split <- diab_2 %>%
+  initial_split(prop = 0.75)
+
+# Extract the data in each split
+diab_train <- training(diab_split)
+diab_test <- testing(diab_split)
+
+# Print the number of cases in each split
+cat("Training cases: ", nrow(diab_train), "\n",
+    "Testing cases: ", nrow(diab_test), sep="")
+# Training cases: 53019
+# Testing cases: 17673
+
+# Run random forest model
+library(randomForest)
+library(datasets)
+
+set.seed(4321)
+rf <- randomForest(Diabetes_binary ~., data = diab_train, proximity = FALSE)
+
+# Print model
+print(rf)
+# Out of bag error is 25.57%, so the train data set model accuracy is around 75%..
+
+# Prediction & Confusion Matrix - Train Data
+p1 <- predict(rf, diab_train)
+confusionMatrix(p1, diab_train$Diabetes_binary) # Accuracy 80%
+
+# Prediction & Confusion Matrix - Test Data
+p2 <- predict(rf, diab_test)
+confusionMatrix(p2, diab_test$Diabetes_binary) # Accuracy 74%
+
+# Plot rf
+plot(rf)
+
+# Default mtry : 3, ntrees : 500
+# Tune the model for higher accuracy
+# Tune hyperparameter 'mtry'
+
+# Create training control
+train_control <- trainControl(method = "cv", number = 5)
+
+# Define the hyperparameter grid
+hyperparameters  <- expand.grid(
+  mtry = c(1:6)
+)
+
+# Train the Random Forest model with hyperparameter tuning
+set.seed(4321)
+model <- train(
+  Diabetes_binary ~ .,
+  data = diab_2,
+  method = "rf",
+  trControl = train_control,
+  tuneGrid = hyperparameters
+)
+
+# Get the best model
+best_model <- model$bestTune
+best_model # mtry 3 default...
+
+# Tune hyperparameter 'ntrees'
+# Separate predictors from the target variable
+predictors <- diab_2[, -which(names(diab_2) == 'Diabetes_binary')]
+target <- diab_2$Diabetes_binary
+
+# Create a sequence of ntree values to try
+ntree_values <- seq(from = 50, to = 500, by = 50)
+
+# Initialize vectors to store results
+oob_errors <- numeric(length(ntree_values))
+
+# Loop through ntree values and train Random Forest models
+for (i in seq_along(ntree_values)) {
+  rf_model <- randomForest(predictors, target, ntree = ntree_values[i], 
+                          importance = TRUE)
+  oob_errors[i] <- rf_model$err.rate[ntree_values[i]]
+}
+
+# Plot OOB error rates against ntree values
+plot(ntree_values, oob_errors, type = "b", 
+     xlab = "Number of Trees (ntree)", 
+     ylab = "Out-of-Bag (OOB) Error")
+
+# Find the ntree value with the lowest OOB error
+optimal_ntree <- ntree_values[which.min(oob_errors)]
+optimal_ntree # ntrees 450
+
+# Train the final model using the best hyperparameters
+final_model <- randomForest(
+  Diabetes_binary ~.,
+  data = diab_2,
+  mtry = best_model$mtry,
+  ntree = optimal_ntree
+)
+print(final_model)
+# Out of bag error is 25.5%, model accuracy is still around 75%
+
+# Prediction & Confusion Matrix - Train Data
+final_p1 <- predict(final_model, diab_train)
+confusionMatrix(final_p1, diab_train$Diabetes_binary) # Accuracy 79.34%
+
+# Prediction & Confusion Matrix - Test Data
+final_p2 <- predict(final_model, diab_test)
+confusionMatrix(final_p2, diab_test$Diabetes_binary) # Accuracy 79.07%
+
+# Plot rf
+plot(final_model)
+
+# Tuning the parameter, test accuracy raise in 5%
+
+# Find out which variable decreases the model accuracy
+var_importance <- importance(final_model)
+print(var_importance)
+# 1.GenHlth 2.BMI
+
+# Show it to 2 dimension plot, but data has many factor variables, how?
+# PCA is a linear method, retain the most important info
+# t-SNE is a nonlinear method, preserving local structures
+# Maybe use t-SNE because it has only 2 classifiers
+
