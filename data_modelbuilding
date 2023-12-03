@@ -1,0 +1,32 @@
+# Reference : https://www.kirenz.com/post/2021-02-17-r-classification-tidymodels/
+# Set
+
+# Create receipe
+diab_rec <- recipe(Diabetes_binary ~ ., data = diab_train)
+
+# Proceed data
+prepped_data <- diab_rec %>%
+  prep()
+
+# Validation set
+cv_folds <- vfold_cv(diab_train, v = 5, strata = Diabetes_binary)
+
+# Model building
+rf_spec <- rand_forest() %>%
+  set_engine("ranger", importance = "impurity") %>%
+  set_mode("classification")
+
+# Create workflows
+rf_workflow <- workflow() %>%
+  add_recipe(diab_rec) %>%
+  add_model(rf_spec)
+
+# Evaluate model
+rf_res <- rf_workflow %>%
+  fit_resamples(resamples = cv_folds,
+                metrics = metric_set(recall, precision, f_meas, 
+                                     accuracy, kap,
+                                     roc_auc, sens, spec),
+                control = control_resamples(save_pred = TRUE))
+
+rf_res %>% collect_metrics(summarize = TRUE)
