@@ -200,3 +200,69 @@ col <- c("diabetes_binary","diff_walk", "heart_diseaseor_attack", "high_bp", "hi
 
 diab_sel <- diab_samp %>%
   select(col)
+
+library(tidymodels)
+library(dplyr)
+
+# Change factor variables into numeric for visualization
+factor_cols <- sapply(diab_sel, is.factor)
+
+diab_vis <- diab_sel %>%
+  mutate_if(factor_cols, as.integer)
+
+selected_numeric <- diab_vis[, factor_cols]
+selected_numeric <- selected_numeric - 1
+
+diab_vis[, factor_cols] <- selected_numeric
+
+# Visualize data in 2-dimensions plot before classification
+# 1. Perform PCA
+pca_samp <- prcomp(diab_vis[, -which(names(diab_vis) == 'diabetes_binary')], scale. = TRUE)
+
+# Extract the first two principal components
+pca_samp_data <- as.data.frame(pca_samp$x[, 1:2])
+colnames(pca_samp_data) <- c("PC1", "PC2")
+
+# Add target variable for coloring
+pca_samp_data$diabetes_binary <- diab_vis$diabetes_binary
+
+# Plot using ggplot
+pca_samp_vis <- ggplot(aes(x=PC1, y=PC2, color=diabetes_binary), data = pca_samp_data) +
+  geom_point() +
+  ggtitle("Using PCA to plot in 2-dimention before modeling")
+pca_samp_vis
+
+
+# 2. Perform t-SNE
+library(tsne)
+tsne_samp <- tsne(diab_vis[, -which(names(diab_vis) == 'diabetes_binary')])
+
+# Extract the first two principal components
+tsne_samp_data <- as.data.frame(tsne_samp)
+colnames(tsne_samp_data) <- c("D1", "D2")
+
+# Add target variable for coloring
+tsne_samp_data$diabetes_binary <- diab_vis$diabetes_binary
+
+# Plot using ggplot
+tsne_samp_vis <- ggplot(aes(x=D1, y=D2, color=diabetes_binary), data = tsne_samp_data) +
+  geom_point() +
+  ggtitle("Using t-SNE to plot in 2-dimention before modeling")
+tsne_samp_vis
+
+# 3. Perform PCoA
+# Create distance matrix
+dist_samp <- dist(diab_vis)
+print(dist_samp)
+
+pcoa_samp <- cmdscale(dist_samp, k = 2, eig = TRUE)
+
+# Add class labels to PCoA result
+pcoa_samp_data <- data.frame(diabetes_binary = diab_vis$diabetes_binary, pcoa_samp$points)
+
+# Plot using ggplot
+pcoa_samp_vis <- ggplot(pcoa_samp_data, aes(x=X1, y =X2, color = diabetes_binary)) +
+  geom_point() +
+  labs(title = "PCoA Visualization of Classification before modeling") +
+  theme_minimal()
+pcoa_samp_vis
