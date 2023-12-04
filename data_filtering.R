@@ -196,13 +196,44 @@ survey_plot <- diab_summary %>%
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 survey_plot
 
-col <- c("diabetes_binary","diff_walk", "heart_diseaseor_attack", "high_bp", "high_chol", "phys_activity", "bmi", "gen_hlth", "ment_hlth", "age", "smoker", "stroke") 
+# Before selecting variables, visualize classification
+
+# Change factor variables into numeric for visualization
+factor_cols_all <- sapply(diab_samp, is.factor)
+
+diab_vis_all <- diab_samp %>%
+  mutate_if(factor_cols_all, as.integer)
+
+selected_numeric_all <- diab_vis_all[, factor_cols_all]
+selected_numeric_all <- selected_numeric_all - 1
+
+diab_vis_all[, factor_cols_all] <- selected_numeric_all
+
+# Perform PCA
+pca_all <- prcomp(diab_vis_all[, -which(names(diab_vis_all) == 'diabetes_binary')], 
+                  scale. = TRUE)
+
+# Extract the first two principal components
+pca_data_all <- as.data.frame(pca_all$x[, 1:2])
+colnames(pca_data_all) <- c("PC1", "PC2")
+
+# Add target variable for coloring
+pca_data_all$diabetes_binary <- diab_vis_all$diabetes_binary
+
+# Plot using ggplot
+pca_vis_all <- ggplot(aes(x=PC1, y=PC2, color=diabetes_binary), 
+                           data = pca_data_all) +
+  geom_point() +
+  ggtitle("Using PCA to plot in 2-dimention before modeling")
+pca_vis_all
+
+################ Column Selection ##################
+
+col <- c("diabetes_binary","diff_walk", "heart_diseaseor_attack", "high_bp", "high_chol", "phys_activity", "bmi", "gen_hlth", "ment_hlth", "age") 
 
 diab_sel <- diab_samp %>%
   select(col)
 
-library(tidymodels)
-library(dplyr)
 
 # Change factor variables into numeric for visualization
 factor_cols <- sapply(diab_sel, is.factor)
@@ -215,23 +246,24 @@ selected_numeric <- selected_numeric - 1
 
 diab_vis[, factor_cols] <- selected_numeric
 
-# Visualize data in 2-dimensions plot before classification
-# 1. Perform PCA
-pca_samp <- prcomp(diab_vis[, -which(names(diab_vis) == 'diabetes_binary')], scale. = TRUE)
+# Visualize data in 2-dimensions plot
+# Perform PCA
+pca <- prcomp(diab_vis[, -which(names(diab_vis) == 'diabetes_binary')], scale. = TRUE)
 
 # Extract the first two principal components
-pca_samp_data <- as.data.frame(pca_samp$x[, 1:2])
-colnames(pca_samp_data) <- c("PC1", "PC2")
+pca_data <- as.data.frame(pca$x[, 1:2])
+colnames(pca_data) <- c("PC1", "PC2")
 
 # Add target variable for coloring
-pca_samp_data$diabetes_binary <- diab_vis$diabetes_binary
+pca_data$diabetes_binary <- diab_vis$diabetes_binary
 
 # Plot using ggplot
-pca_samp_vis <- ggplot(aes(x=PC1, y=PC2, color=diabetes_binary), data = pca_samp_data) +
+pca_vis <- ggplot(aes(x=PC1, y=PC2, color=diabetes_binary), data = pca_data) +
   geom_point() +
-  ggtitle("Using PCA to plot in 2-dimention before modeling")
-pca_samp_vis
+  ggtitle("Using PCA to plot in 2-dimention")
+pca_vis
 
+########################################################
 
 # 2. Perform t-SNE
 library(tsne)
