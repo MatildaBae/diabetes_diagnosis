@@ -8,6 +8,7 @@ library(tidyverse)
 library(tidymodels)
 library(ranger)
 library(janitor)
+library(vip)
 
 # Setting seed for reproducibility
 set.seed(123)
@@ -298,3 +299,136 @@ pcoa_samp_vis <- ggplot(pcoa_samp_data, aes(x=X1, y =X2, color = diabetes_binary
   labs(title = "PCoA Visualization of Classification before modeling") +
   theme_minimal()
 pcoa_samp_vis
+
+
+
+
+
+
+
+
+################################
+# RANDOM FOREST CLASSIFICATION #
+################################
+
+# Splitting data into training-testing subsets
+diab_split <- diab_sel %>%
+  initial_split(prop = 0.75,
+                strata = diabetes_binary)
+diab_train <- diab_split %>%
+  training()
+diab_test <- diab_split %>%
+  testing()
+
+
+# Setting up folds for cross-validation
+diab_cv <- diab_samp %>% 
+  vfold_cv(v = 10, strata = diabetes_binary)
+
+# Setting up recipe
+diab_recipe <- recipe(diabetes_binary ~ ., diab_train) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_dummy(all_factor_predictors())
+
+
+# Setting up model specification
+cv_spec <- rand_forest(mtry = tune(), 
+                       min_n = tune(),
+                       trees = 1001) %>%
+  set_engine('ranger') %>%
+  set_mode('classification')
+
+# Setting up workflow object
+cv_workflow <- workflow() %>%
+  add_recipe(diab_recipe) %>%
+  add_model(cv_spec)
+
+
+
+# 5-fold cross-validation, 
+cv_results <- cv_workflow %>% 
+  tune_grid(resamples = diab_cv, grid = 20) %>%
+  collect_metrics()
+
+
+# Inspecting cross-validation results
+cv_results %>% 
+  filter(.metric == 'accuracy') %>% 
+  select(mtry, min_n, mean) %>%
+  arrange(desc(mean))
+
+
+# mtry_param <- cv_results %>% filter(.metric == 'accuracy') %>%
+#         arrange(desc(mean)) %>%
+#         slice_head(n = 1) %>%
+#         select(mtry) %>%
+#         pull()
+mtry_param <- 2
+
+# min_n_param <- cv_results %>% filter(.metric == 'accuracy') %>%
+#         arrange(desc(mean)) %>%
+#         slice_head(n = 1) %>%
+#         select(min_n) %>%
+#         pull()
+min_n_param <- 36
+
+
+
+# Setting up final model specification 
+rf_spec <- rand_forest(mtry = mtry_param, 
+                       min_n = min_n_param, 
+                       trees = 1001) %>% 
+  set_engine('ranger',
+             importance = 'impurity') %>%
+  set_mode('classification')
+
+rf_wf <- workflow() %>%
+  add_model(rf_spec) %>%
+  add_recipe(diab_recipe)
+
+rf_predict <- rf_wf %>%
+  fit(diab_train)
+
+rf_predict %>% predict(diab_test) %>% bind_cols(diab_test) %>% 
+  metrics(truth = diabetes_binary, .pred_class)
+
+rf_predict %>% predict(diab_test, type = 'prob') %>% bind_cols(diab_test) %>%
+  roc_curve(truth = diabetes_binary, .pred_Case) %>%
+  autoplot()
+
+rf_predict %>% predict(diab_test) %>% bind_cols(diab_test) %>%
+  conf_mat(truth = diabetes_binary, estimate = .pred_class)
+
+rf_predict %>% predict(diab_test) %>% bind_cols(diab_test) %>%
+  f_meas(truth = diabetes_binary, estimate = .pred_class)
+
+rf_predict %>% predict(diab_test) %>% bind_cols(diab_test) %>%
+  spec(truth = diabetes_binary, estimate = .pred_class)
+
+rf_predict %>% predict(diab_test) %>% bind_cols(diab_test) %>%
+  sens(truth = diabetes_binary, estimate = .pred_class)
+
+# Variable importance scores
+rf_predict %>% extract_fit_parsnip() %>% vip()
+
+
+
+#########################
+## LOGISTIC REGRESSION ##
+#########################
+
+lr_spec <- logistic_reg() %>%
+  set_engine('glm') %>%
+  set_mode('classification')
+
+lr_wf <- workflow() %>%
+  add_recipe(diab_recipe) %>%
+  add_model(lr_spec)
+
+lr_fit <- lr_wf %>%
+  fit(diab_train)
+
+lr_predict <- lr_fit %>%
+  predict(diab_test)
+
+lr_predict %>% bind_cols(diab_test) %>% metrics(truth = diabetes_binary, estimate = .pred_class)
