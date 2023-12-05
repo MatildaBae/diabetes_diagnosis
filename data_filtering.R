@@ -219,17 +219,18 @@ pca_data_all <- as.data.frame(pca_all$x[, 1:2])
 colnames(pca_data_all) <- c("PC1", "PC2")
 
 # Add target variable for coloring
-pca_data_all$diabetes_binary <- diab_vis_all$diabetes_binary
+pca_data_all$diabetes_binary <- diab_samp$diabetes_binary
 
 # Plot using ggplot
 pca_vis_all <- ggplot(aes(x=PC1, y=PC2, color=diabetes_binary), 
                            data = pca_data_all) +
   geom_point() +
-  ggtitle("Using PCA to plot in 2-dimention before modeling")
+  ggtitle("PCA Results including every variables") +
+  labs(color= "Diabetes")
+
 pca_vis_all
 
-################ Column Selection ##################
-
+# Select 9 variables by observing plots from each variables
 col <- c("diabetes_binary","diff_walk", "heart_diseaseor_attack", "high_bp", "high_chol", "phys_activity", "bmi", "gen_hlth", "ment_hlth", "age") 
 
 diab_sel <- diab_samp %>%
@@ -256,52 +257,15 @@ pca_data <- as.data.frame(pca$x[, 1:2])
 colnames(pca_data) <- c("PC1", "PC2")
 
 # Add target variable for coloring
-pca_data$diabetes_binary <- diab_vis$diabetes_binary
+pca_data$diabetes_binary <- diab_samp$diabetes_binary
 
 # Plot using ggplot
 pca_vis <- ggplot(aes(x=PC1, y=PC2, color=diabetes_binary), data = pca_data) +
   geom_point() +
-  ggtitle("Using PCA to plot in 2-dimention")
+  ggtitle("PCA Results using 9 selected variables") +
+  labs(color= "Diabetes")
+
 pca_vis
-
-########################################################
-
-# 2. Perform t-SNE
-library(tsne)
-tsne_samp <- tsne(diab_vis[, -which(names(diab_vis) == 'diabetes_binary')])
-
-# Extract the first two principal components
-tsne_samp_data <- as.data.frame(tsne_samp)
-colnames(tsne_samp_data) <- c("D1", "D2")
-
-# Add target variable for coloring
-tsne_samp_data$diabetes_binary <- diab_vis$diabetes_binary
-
-# Plot using ggplot
-tsne_samp_vis <- ggplot(aes(x=D1, y=D2, color=diabetes_binary), data = tsne_samp_data) +
-  geom_point() +
-  ggtitle("Using t-SNE to plot in 2-dimention before modeling")
-tsne_samp_vis
-
-# 3. Perform PCoA
-# Create distance matrix
-dist_samp <- dist(diab_vis)
-print(dist_samp)
-
-pcoa_samp <- cmdscale(dist_samp, k = 2, eig = TRUE)
-
-# Add class labels to PCoA result
-pcoa_samp_data <- data.frame(diabetes_binary = diab_vis$diabetes_binary, pcoa_samp$points)
-
-# Plot using ggplot
-pcoa_samp_vis <- ggplot(pcoa_samp_data, aes(x=X1, y =X2, color = diabetes_binary)) +
-  geom_point() +
-  labs(title = "PCoA Visualization of Classification before modeling") +
-  theme_minimal()
-pcoa_samp_vis
-
-
-
 
 
 
