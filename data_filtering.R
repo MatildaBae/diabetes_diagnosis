@@ -351,6 +351,7 @@ cv_params <- cv_results %>%
   filter(.metric == 'accuracy') %>% 
   select(mtry, min_n, mean) %>%
   arrange(desc(mean))
+cv_params
 
 param_plot <- cv_params %>%
   ggplot(aes(x = mtry, 
@@ -371,6 +372,9 @@ min_n_param <- cv_params %>%
   slice_head(n = 1) %>% 
   select(min_n) %>% 
   pull()
+
+print(mtry_param)  # 4
+print(min_n_param)  # 20
 
 # Setting up final model specification 
 rf_spec <- rand_forest(mtry = mtry_param, 
