@@ -296,6 +296,7 @@ ggplot(loading_plot, aes(x = 0, y = 0, xend = PC1, yend = PC2)) +
 ################################
 
 # Splitting data into training-testing subsets
+set.seed(123)
 diab_split <- diab_sel %>%
   initial_split(prop = 0.75,
                 strata = diabetes_binary)
@@ -306,56 +307,51 @@ diab_test <- diab_split %>%
 
 
 # Setting up folds for cross-validation
+set.seed(123)
 diab_cv <- diab_samp %>% 
   vfold_cv(v = 10, strata = diabetes_binary)
 
 # Setting up recipe
+set.seed(123)
 diab_recipe <- recipe(diabetes_binary ~ ., diab_train) %>%
   step_normalize(all_numeric_predictors()) %>%
   step_dummy(all_factor_predictors())
 
 
 # Setting up model specification
+set.seed(123)
 cv_spec <- rand_forest(mtry = tune(), 
                        min_n = tune(),
                        trees = 1001) %>%
-  set_engine('ranger') %>%
+  set_engine('ranger', seed = 123) %>%
   set_mode('classification')
 
 # Setting up workflow object
+set.seed(123)
 cv_workflow <- workflow() %>%
   add_recipe(diab_recipe) %>%
   add_model(cv_spec)
 
+# Make possible mtry, min-n matches
+tune_grid <- tibble(mtry = rep(seq(to=13, by=3), each = 5),
+                    min_n = rep(seq(from = 5, to = 25, by = 5), 5))
 
-
-# 5-fold cross-validation, 
+# 5-fold cross-validation
+set.seed(123)
 cv_results <- cv_workflow %>% 
-  tune_grid(resamples = diab_cv, grid = 20) %>%
+  tune_grid(resamples = diab_cv, grid = tune_grid) %>%
   collect_metrics()
 
 
 # Inspecting cross-validation results
+set.seed(123)
 cv_results %>% 
   filter(.metric == 'accuracy') %>% 
   select(mtry, min_n, mean) %>%
   arrange(desc(mean))
 
-
-# mtry_param <- cv_results %>% filter(.metric == 'accuracy') %>%
-#         arrange(desc(mean)) %>%
-#         slice_head(n = 1) %>%
-#         select(mtry) %>%
-#         pull()
-mtry_param <- 2
-
-# min_n_param <- cv_results %>% filter(.metric == 'accuracy') %>%
-#         arrange(desc(mean)) %>%
-#         slice_head(n = 1) %>%
-#         select(min_n) %>%
-#         pull()
-min_n_param <- 36
-
+mtry_param <- 4
+min_n_param <- 20
 
 
 # Setting up final model specification 
