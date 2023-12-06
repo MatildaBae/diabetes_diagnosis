@@ -225,6 +225,7 @@ pca_data_all$diabetes_binary <- diab_samp$diabetes_binary
 pca_vis_all <- ggplot(aes(x=PC1, y=PC2, color=diabetes_binary), 
                            data = pca_data_all) +
   geom_point() +
+  scale_color_brewer(palette = 'Set2') +
   ggtitle("PCA Results including every variables") +
   labs(color= "Diabetes")
 
