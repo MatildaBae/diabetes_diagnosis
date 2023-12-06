@@ -277,6 +277,7 @@ loading_plot <- data.frame(
 new_row_names <- c("DiffWalk", "HeartDiseaseorAttack", "HighBP", " HighChol", 
                    "PhysActivity", "BMI", "GenHlth", "MentHlth", "Age")
 loading_plot$Variable <- new_row_names
+loading_plot
 
 # Plot the PCA loading plot with arrows
 ggplot(loading_plot, aes(x = 0, y = 0, xend = PC1, yend = PC2)) +
