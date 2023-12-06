@@ -273,7 +273,10 @@ loading_plot <- data.frame(
   PC1 = pca$rotation[, 1],  # PC1 loadings
   PC2 = pca$rotation[, 2]   # PC2 loadings
 )
-loading_plot$Variable <- rownames(loading_plot)
+
+new_row_names <- c("DiffWalk", "HeartDiseaseorAttack", "HighBP", " HighChol", 
+                   "PhysActivity", "BMI", "GenHlth", "MentHlth", "Age")
+loading_plot$Variable <- new_row_names
 
 # Plot the PCA loading plot with arrows
 ggplot(loading_plot, aes(x = 0, y = 0, xend = PC1, yend = PC2)) +
@@ -283,6 +286,7 @@ ggplot(loading_plot, aes(x = 0, y = 0, xend = PC1, yend = PC2)) +
             vjust = ifelse(loading_plot$PC2 > 0, 0, 1)) +
   xlim(-1, 1) + ylim(-1, 1) +
   labs(x = "PC1", y = "PC2", title = "PCA Loading Plot with Arrows")
+
 
 
 
