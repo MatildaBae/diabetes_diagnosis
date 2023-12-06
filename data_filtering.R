@@ -262,6 +262,7 @@ pca_data$diabetes_binary <- diab_samp$diabetes_binary
 # Plot using ggplot
 pca_vis <- ggplot(aes(x=PC1, y=PC2, color=diabetes_binary), data = pca_data) +
   geom_point() +
+  scale_color_brewer(palette = 'Set2') +
   ggtitle("PCA Results using 9 selected variables") +
   labs(color= "Diabetes")
 
@@ -345,14 +346,30 @@ cv_results <- cv_workflow %>%
 
 # Inspecting cross-validation results
 set.seed(123)
-cv_results %>% 
+cv_params <- cv_results %>% 
   filter(.metric == 'accuracy') %>% 
   select(mtry, min_n, mean) %>%
   arrange(desc(mean))
 
-mtry_param <- 4
-min_n_param <- 20
+param_plot <- cv_params %>%
+  ggplot(aes(x = mtry, 
+             y = mean, color = factor(min_n))) +
+           geom_point() +
+           geom_line() +
+  labs(y = 'Mean accuracy', color = 'min_n') +
+  scale_color_brewer(palette = 'Set2') +
+  theme_classic() +
+  theme(text = element_text(size = 12))
+param_plot
 
+mtry_param <- cv_params %>% 
+  slice_head(n = 1) %>% 
+  select(mtry) %>% 
+  pull()
+min_n_param <- cv_params %>% 
+  slice_head(n = 1) %>% 
+  select(min_n) %>% 
+  pull()
 
 # Setting up final model specification 
 rf_spec <- rand_forest(mtry = mtry_param, 
@@ -366,30 +383,53 @@ rf_wf <- workflow() %>%
   add_model(rf_spec) %>%
   add_recipe(diab_recipe)
 
-rf_predict <- rf_wf %>%
+rf_fit <- rf_wf %>%
   fit(diab_train)
 
-rf_predict %>% predict(diab_test) %>% bind_cols(diab_test) %>% 
+rf_predict <- rf_fit %>%
+  predict(diab_test) %>% bind_cols(diab_test)
+
+rf_predict %>%
   metrics(truth = diabetes_binary, .pred_class)
 
-rf_predict %>% predict(diab_test, type = 'prob') %>% bind_cols(diab_test) %>%
-  roc_curve(truth = diabetes_binary, .pred_Case) %>%
-  autoplot()
+rf_prob <- rf_fit %>% 
+  predict(diab_test, type = 'prob') %>%
+  bind_cols(diab_test)
 
-rf_predict %>% predict(diab_test) %>% bind_cols(diab_test) %>%
+rf_prob %>% roc_auc(truth = diabetes_binary, .pred_Case)
+
+rf_prob %>%
+  roc_curve(truth = diabetes_binary, .pred_Case) %>%
+  autoplot() +
+  labs(x = 'True positive rate', 
+       y = 'False positive rate') +
+  ggtitle('ROC curve (AUC = 0.818)') +
+  theme(text = element_text(size = 12)) +
+  theme_classic()
+
+rf_predict %>%
   conf_mat(truth = diabetes_binary, estimate = .pred_class)
 
-rf_predict %>% predict(diab_test) %>% bind_cols(diab_test) %>%
-  f_meas(truth = diabetes_binary, estimate = .pred_class)
 
-rf_predict %>% predict(diab_test) %>% bind_cols(diab_test) %>%
-  spec(truth = diabetes_binary, estimate = .pred_class)
+# F1 score, sensitivity, specificity  
+rf_predict %>%
+  f_meas(truth = diabetes_binary, estimate = .pred_class) %>% 
+  bind_rows(rf_predict %>%
+              sens(truth = diabetes_binary, estimate = .pred_class), 
+            rf_predict %>% 
+              spec(truth = diabetes_binary, estimate = .pred_class))
 
-rf_predict %>% predict(diab_test) %>% bind_cols(diab_test) %>%
-  sens(truth = diabetes_binary, estimate = .pred_class)
+
+
 
 # Variable importance scores
-rf_predict %>% extract_fit_parsnip() %>% vip()
+rf_fit %>% 
+  extract_fit_parsnip() %>% 
+  vip() +
+  labs(y = 'Variable Importance') +
+  theme_classic() +
+  theme(text = element_text(size = 12))
+
 
 
 
