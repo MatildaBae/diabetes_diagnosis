@@ -267,7 +267,22 @@ pca_vis <- ggplot(aes(x=PC1, y=PC2, color=diabetes_binary), data = pca_data) +
 
 pca_vis
 
+# Create a data frame for plotting the loading vectors
+loading_plot <- data.frame(
+  Variable = colnames(pca$rotation),
+  PC1 = pca$rotation[, 1],  # PC1 loadings
+  PC2 = pca$rotation[, 2]   # PC2 loadings
+)
+loading_plot$Variable <- rownames(loading_plot)
 
+# Plot the PCA loading plot with arrows
+ggplot(loading_plot, aes(x = 0, y = 0, xend = PC1, yend = PC2)) +
+  geom_segment(arrow = arrow(type = "closed", length = unit(0.1, "inches")), color = "orange") +
+  geom_text(aes(label = Variable, x = PC1 * 1.2, y = PC2 * 1.2), 
+            hjust = ifelse(loading_plot$PC1 > 0, 0, 1),  # Adjust horizontal position
+            vjust = ifelse(loading_plot$PC2 > 0, 0, 1)) +
+  xlim(-1, 1) + ylim(-1, 1) +
+  labs(x = "PC1", y = "PC2", title = "PCA Loading Plot with Arrows")
 
 
 
