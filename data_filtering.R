@@ -226,7 +226,7 @@ pca_vis_all <- ggplot(aes(x=PC1, y=PC2, color=diabetes_binary),
                            data = pca_data_all) +
   geom_point() +
   scale_color_brewer(palette = 'Set2') +
-  ggtitle("PCA Results including every variables") +
+  ggtitle("PCA visualization with every variables") +
   labs(color= "Diabetes")
 
 pca_vis_all
@@ -264,7 +264,7 @@ pca_data$diabetes_binary <- diab_samp$diabetes_binary
 pca_vis <- ggplot(aes(x=PC1, y=PC2, color=diabetes_binary), data = pca_data) +
   geom_point() +
   scale_color_brewer(palette = 'Set2') +
-  ggtitle("PCA Results using 9 selected variables") +
+  ggtitle("PCA visualization with 9 selected variables") +
   labs(color= "Diabetes")
 
 pca_vis
@@ -288,7 +288,7 @@ ggplot(loading_plot, aes(x = 0, y = 0, xend = PC1, yend = PC2)) +
             hjust = ifelse(loading_plot$PC1 > 0, 0, 1),  # Adjust horizontal position
             vjust = ifelse(loading_plot$PC2 > 0, 0, 1)) +
   xlim(-1, 1) + ylim(-1, 1) +
-  labs(x = "PC1", y = "PC2", title = "PCA Loading Plot with Arrows")
+  labs(x = "PC1", y = "PC2", title = "PCA loading plot with 9 variables")
 
 
 
