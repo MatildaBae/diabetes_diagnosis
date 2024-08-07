@@ -8,7 +8,7 @@
 Welcome to the repository of the project "Development of a Diabetes Diagnosis Algorithm". This project was developed as part of the Introduction to Data Science course under the supervision of Professor Anthony Christidis. The primary goal of this project is to create a predictive model for diagnosing diabetes using random forest algorithms.
 
 ---
-
+ 
 ## Features
 
 ### 🔍 Predictive Model Development
